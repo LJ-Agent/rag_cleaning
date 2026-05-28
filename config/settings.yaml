@@ -1,0 +1,215 @@
+# RAG Cleaning Service Configuration
+# 独立文档清洗服务配置
+
+server:
+  host: "0.0.0.0"
+
+# gRPC 服务端口
+grpc:
+  cleaning:
+    port: 50056
+    max_workers: 20
+  timeout_seconds: 120
+  max_retries: 3
+  retry_delay_ms: 1000
+
+# Kafka 配置 (全异步驱动)
+kafka:
+  bootstrap_servers: "${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}"
+  consumer_group: "rag-cleaning-group"
+  # 消费主题
+  consume_topics:
+    task_submit: "rag-cleaning-task-submit"
+    pdf_preprocess: "rag-cleaning-pdf-preprocess"
+    docx_preprocess: "rag-cleaning-docx-preprocess"
+    xlsx_preprocess: "rag-cleaning-xlsx-preprocess"
+    pptx_preprocess: "rag-cleaning-pptx-preprocess"
+    ocr_preprocess: "rag-cleaning-ocr-preprocess"
+    element_table: "rag-cleaning-element-table"
+    element_image: "rag-cleaning-element-image"
+    element_formula: "rag-cleaning-element-formula"
+    general_cleaning: "rag-cleaning-general-input"
+    retry: "rag-cleaning-retry"
+  # 生产主题
+  produce_topics:
+    unified_input: "rag-cleaning-unified-input"
+    element_table: "rag-cleaning-element-table"
+    element_image: "rag-cleaning-element-image"
+    element_formula: "rag-cleaning-element-formula"
+    general_input: "rag-cleaning-general-input"
+    task_complete: "rag-cleaning-complete"
+    task_failed: "rag-cleaning-failed"
+    dlq: "rag-cleaning-dlq"
+  consumer:
+    auto_offset_reset: "earliest"
+    enable_auto_commit: false
+    max_poll_records: 10
+    session_timeout_ms: 30000
+  producer:
+    acks: 1
+    retries: 3
+    linger_ms: 5
+
+# MinIO 对象存储
+minio:
+  endpoint: "${MINIO_ENDPOINT:localhost:9000}"
+  access_key: "${MINIO_ACCESS_KEY:minioadmin}"
+  secret_key: "${MINIO_SECRET_KEY:minioadmin}"
+  bucket_name: "rag-documents"
+  secure: false
+  # 清洗结果输出路径前缀
+  output_prefix: "cleaned"
+
+# LLM 配置 (多模态描述/公式识别/VLM)
+llm:
+  provider: "openai"
+  api_key: "${LLM_API_KEY:}"
+  base_url: "${LLM_BASE_URL:https://api.openai.com/v1}"
+  embedding_model: "text-embedding-3-small"
+  chat_model: "${LLM_CHAT_MODEL:gpt-4o}"
+  vision_model: "${LLM_VISION_MODEL:gpt-4o}"  # 多模态图片描述模型
+  local_embedding_model: "BAAI/bge-base-zh-v1.5"
+  use_local_embedding: true
+  max_tokens: 4096
+  temperature: 0.1
+  request_timeout: 120
+  max_retries: 3
+
+# Redis 缓存与分布式锁
+redis:
+  host: "${REDIS_HOST:localhost}"
+  port: 6379
+  password: "${REDIS_PASSWORD:}"
+  database: 0
+  pool_max_active: 20
+  pool_max_idle: 10
+  pool_min_idle: 5
+  timeout_ms: 5000
+  cache_ttl_seconds: 3600
+  # 分布式锁配置
+  lock_ttl_seconds: 30
+  lock_retry_times: 3
+  lock_retry_delay_ms: 200
+
+# 文件处理配置
+file:
+  supported_types: ["pdf", "docx", "xlsx", "pptx", "md", "txt", "png", "jpg", "jpeg", "bmp", "tiff"]
+  max_file_size_mb: 200
+  # MIME 类型映射
+  mime_to_format:
+    "application/pdf": "pdf"
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx"
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx"
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation": "pptx"
+    "text/markdown": "md"
+    "text/plain": "txt"
+    "image/png": "image"
+    "image/jpeg": "image"
+    "image/bmp": "image"
+    "image/tiff": "image"
+
+# 格式预处理器配置
+preprocessing:
+  pdf:
+    extract_images: true
+    extract_tables: true
+    ocr_enabled: false  # 扫描件OCR由OCR预处理器处理
+    max_pages: 500
+  docx:
+    extract_images: true
+    extract_tables: true
+    preserve_heading_hierarchy: true
+  xlsx:
+    max_rows: 100000
+    max_columns: 500
+    merge_cell_strategy: "fill"  # fill / skip / mark
+  pptx:
+    extract_notes: true
+    extract_master_slide: false
+
+# 公用元素处理配置
+elements:
+  table:
+    max_cell_content_length: 5000
+    output_format: "markdown"  # markdown / html / json
+    quality_threshold: 0.6
+  image:
+    max_width: 2048
+    max_height: 2048
+    quality: 85
+    dedup_threshold: 0.95  # 图片去重相似度阈值
+    generate_description: true  # 使用VLM生成图片描述
+    description_lang: "zh"
+  formula:
+    output_format: "latex"
+    render_dpi: 150
+    confidence_threshold: 0.7
+
+# 通用清洗配置
+cleaning:
+  basic:
+    remove_empty_lines: true
+    remove_duplicate_lines: true
+    normalize_punctuation: true  # 统一中文标点
+    normalize_newlines: true
+    fix_encoding: true
+    max_consecutive_newlines: 2
+  content_filter:
+    remove_headers_footers: true
+    remove_page_numbers: true
+    remove_watermarks: true
+    remove_ads: false
+    remove_legal_notices: true
+    remove_copyright: true
+  structure:
+    merge_broken_sentences: true
+    merge_split_paragraphs: true
+    fix_heading_hierarchy: true
+    normalize_list_format: true
+  sensitive:
+    enabled: true
+    mask_phone: true
+    mask_id_card: true
+    mask_bank_card: true
+    mask_email: true
+    mask_ip: false
+    mask_strategy: "replace"  # replace / remove / hash
+    mask_placeholder: "***"
+
+# 质量校验配置
+quality:
+  enabled: true
+  pass_threshold: 0.6
+  warn_threshold: 0.4
+  dimensions:
+    completeness:
+      weight: 0.3
+      min_text_length: 50
+    purity:
+      weight: 0.25
+      max_noise_ratio: 0.2
+    structure:
+      weight: 0.25
+      min_heading_density: 0.01
+    coherence:
+      weight: 0.2
+      min_avg_sentence_length: 5
+
+# 任务调度配置
+task:
+  max_concurrent: 10
+  retry_max: 3
+  retry_base_delay: 60  # 基础重试延迟(秒), 指数退避: 60/300/900/1800
+  retry_multiplier: 5   # 退避乘数: 1min→5min→15min→30min
+  task_timeout: 1200     # 单个任务超时(秒)
+  priority_levels:
+    high: 0
+    normal: 1
+    low: 2
+
+# 日志
+logging:
+  level: "INFO"
+  format: "{time:YYYY-MM-DD HH:mm:ss.SSS} | {level: <8} | {extra[trace_id]: <24} | {name}:{function}:{line} | {message}"
+  rotation: "30 days"
+  retention: "90 days"

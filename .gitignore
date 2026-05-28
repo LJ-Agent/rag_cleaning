@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Environment
+.env
+.env.local
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Proto generated
+src/communication/grpc_server/generated/*_pb2.py
+src/communication/grpc_server/generated/*_pb2_grpc.py
+
+# Test
+.pytest_cache/
+.coverage
+htmlcov/
+
+# MyPy
+.mypy_cache/

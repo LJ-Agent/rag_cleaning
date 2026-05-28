@@ -1,0 +1,53 @@
+[project]
+name = "rag-cleaning"
+version = "1.0.0"
+description = "RAG 独立文档清洗服务 — 多格式解析/元素处理/通用清洗/质量校验"
+requires-python = ">=3.11"
+dependencies = [
+    "pyyaml>=6.0",
+    "loguru>=0.7",
+    "openai>=1.0",
+    "sentence-transformers>=2.2",
+    "minio>=7.2",
+    "redis>=5.0",
+    "grpcio>=1.60",
+    "grpcio-tools>=1.60",
+    "protobuf>=4.25",
+    "kafka-python>=2.0",
+    "pypdf>=4.0",
+    "pdfplumber>=0.10",
+    "python-docx>=1.1",
+    "openpyxl>=3.1",
+    "python-pptx>=0.6",
+    "Pillow>=10.0",
+    "jieba>=0.42",
+    "rank-bm25>=0.2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "pytest-cov>=4.1",
+    "ruff>=0.3",
+    "mypy>=1.8",
+]
+
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP"]
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
