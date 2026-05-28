@@ -66,8 +66,7 @@ class StructureFixer:
 
         for next_elem in elements[1:]:
             # Only merge same-role paragraph elements
-            if current.role not in (ElementRole.PARAGRAPH, ElementRole.TEXT) or \
-               next_elem.role not in (ElementRole.PARAGRAPH, ElementRole.TEXT):
+            if current.role != ElementRole.PARAGRAPH or next_elem.role != ElementRole.PARAGRAPH:
                 merged.append(current)
                 current = next_elem
                 continue
