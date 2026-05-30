@@ -77,6 +77,14 @@ class MarkdownGenerator:
             return self._formula_to_markdown(element)
         elif isinstance(element, CodeElement):
             return self._code_to_markdown(element)
+        elif type(element).__name__ == "CircuitDiagramElement":
+            return self._circuit_to_markdown(element)
+        elif type(element).__name__ == "ChemicalEquationElement":
+            return self._equation_to_markdown(element)
+        elif type(element).__name__ == "AudioElement":
+            return self._audio_to_markdown(element)
+        elif type(element).__name__ == "VideoElement":
+            return self._video_to_markdown(element)
         return ""
 
     def _text_to_markdown(self, elem: TextElement) -> str:
@@ -131,3 +139,40 @@ class MarkdownGenerator:
         lang = elem.language or ""
         code = elem.code.strip()
         return f"```{lang}\n{code}\n```"
+
+    def _circuit_to_markdown(self, elem) -> str:
+        lines = []
+        if elem.description:
+            lines.append(f"> **电路描述**: {elem.description}")
+        if elem.components:
+            comps = ", ".join(elem.components[:10])
+            lines.append(f"> **组件**: {comps}")
+        return "\n".join(lines) if lines else ""
+
+    def _equation_to_markdown(self, elem) -> str:
+        lines = []
+        if elem.latex:
+            lines.append(f"$$\n{elem.latex}\n$$")
+        if elem.smiles:
+            lines.append(f"> SMILES: `{elem.smiles}`")
+        if elem.description:
+            lines.append(f"> {elem.description}")
+        return "\n".join(lines) if lines else ""
+
+    def _audio_to_markdown(self, elem) -> str:
+        parts = []
+        if elem.transcript:
+            parts.append(f"> **转录**: {elem.transcript[:200]}")
+        if elem.duration_seconds:
+            parts.append(f"> 时长: {elem.duration_seconds:.0f}s")
+        return "\n".join(parts) if parts else ""
+
+    def _video_to_markdown(self, elem) -> str:
+        parts = []
+        if elem.description:
+            parts.append(f"> **描述**: {elem.description}")
+        if elem.transcript:
+            parts.append(f"> **转录**: {elem.transcript[:200]}")
+        if elem.duration_seconds:
+            parts.append(f"> 时长: {elem.duration_seconds:.0f}s")
+        return "\n".join(parts) if parts else ""
