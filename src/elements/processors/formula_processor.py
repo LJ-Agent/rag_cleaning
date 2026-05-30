@@ -6,7 +6,7 @@ import re
 from typing import Any
 
 from common.config_loader import get_config
-from common.models.document import FormulaElement
+from common.models.document import BaseElement, FormulaElement
 from common.util.logger import get_logger
 from elements.base import BaseElementProcessor
 from elements.registry import get_element_registry

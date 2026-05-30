@@ -5,7 +5,7 @@ import io
 from typing import Any
 
 from common.config_loader import get_config
-from common.models.document import ImageElement
+from common.models.document import BaseElement, ImageElement
 from common.util.logger import get_logger
 from common.util.utils import md5_bytes
 from elements.base import BaseElementProcessor

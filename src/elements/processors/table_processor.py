@@ -3,7 +3,7 @@
 from typing import Any
 
 from common.config_loader import get_config
-from common.models.document import TableCell, TableElement
+from common.models.document import BaseElement, TableCell, TableElement
 from common.util.logger import get_logger
 from elements.base import BaseElementProcessor
 from elements.registry import get_element_registry
