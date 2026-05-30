@@ -108,19 +108,34 @@ class OCRPreprocessor(BasePreprocessor):
             )
 
     def _ocr_image(self, img_data: bytes) -> str:
-        """Run Tesseract OCR on an image."""
+        """Run OCR on an image — tries Tesseract first, falls back to EasyOCR."""
+        # Try Tesseract first (fast, lightweight)
         try:
             import pytesseract
             from PIL import Image
             img = Image.open(io.BytesIO(img_data))
-            # Preprocess: convert to grayscale for better OCR
             if img.mode != "L":
                 img = img.convert("L")
             text = pytesseract.image_to_string(img, lang=self._lang)
+            if text.strip():
+                return text.strip()
+        except Exception:
+            pass
+
+        # Fallback: EasyOCR (pure Python, no system deps)
+        try:
+            import easyocr
+            import numpy as np
+            from PIL import Image
+            reader = easyocr.Reader(["ch_sim", "en"], gpu=False)
+            img = Image.open(io.BytesIO(img_data))
+            arr = np.array(img)
+            results = reader.readtext(arr)
+            text = "\n".join(r[1] for r in results)
             return text.strip()
         except ImportError:
             raise PreprocessingException(
-                "pytesseract not installed. Install: pip install pytesseract + apt install tesseract-ocr tesseract-ocr-chi-sim",
+                "No OCR engine available. Install: pip install pytesseract easyocr",
                 format_type="ocr"
             )
 
