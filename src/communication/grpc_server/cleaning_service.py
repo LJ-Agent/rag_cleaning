@@ -107,72 +107,10 @@ class CleaningServiceServicer:
 
     def _run_inline_pipeline(self, task: CleaningTask, file_data: bytes):
         """Run the full cleaning pipeline in-process (for gRPC sync path)."""
-        from common.util.utils import get_file_extension
-
-        ext = get_file_extension(task.file_name)
-
-        # Step 1: Format preprocessing
-        from preprocessing.pdf_preprocessor import PDFPreprocessor
-        from preprocessing.docx_preprocessor import DocxPreprocessor
-        from preprocessing.xlsx_preprocessor import XlsxPreprocessor
-        from preprocessing.pptx_preprocessor import PptxPreprocessor
-        from preprocessing.md_preprocessor import MarkdownPreprocessor
-        from preprocessing.txt_preprocessor import TxtPreprocessor
-
-        preprocessors = {
-            "pdf": PDFPreprocessor(),
-            "docx": DocxPreprocessor(),
-            "xlsx": XlsxPreprocessor(),
-            "pptx": PptxPreprocessor(),
-            "md": MarkdownPreprocessor(),
-            "txt": TxtPreprocessor(),
-        }
-
-        prep = preprocessors.get(ext)
-        if prep is None:
-            from common.exception.exceptions import UnsupportedFormatException
-            raise UnsupportedFormatException(f"Unsupported format: {ext}", format_type=ext)
-
-        doc = prep.extract(file_data, task.file_name)
-        doc.doc_id = task.document_id
-
-        # Step 2: Element processing
-        from elements.table_processor import TableProcessor
-        from elements.image_processor import ImageProcessor
-        from elements.formula_processor import FormulaProcessor
-
-        table_proc = TableProcessor()
-        image_proc = ImageProcessor()
-        formula_proc = FormulaProcessor()
-
-        for page in doc.pages:
-            for i, elem in enumerate(page.elements):
-                if hasattr(elem, "role") and elem.role.value == "table":
-                    page.elements[i] = table_proc.process(elem)
-                elif hasattr(elem, "role") and elem.role.value == "image":
-                    page.elements[i] = image_proc.process(elem)
-                elif hasattr(elem, "role") and elem.role.value == "formula":
-                    page.elements[i] = formula_proc.process(elem)
-
-        # Step 3: General cleaning
-        from cleaning.basic_cleaner import BasicCleaner
-        from cleaning.content_filter import ContentFilter
-        from cleaning.structure_fixer import StructureFixer
-        from cleaning.sensitive_masker import SensitiveMasker
-
-        BasicCleaner().clean(doc)
-        ContentFilter().filter(doc)
-        StructureFixer().fix(doc)
-        SensitiveMasker().mask(doc)
-
-        # Step 4: Quality validation
-        from cleaning.quality_validator import QualityValidator
-        QualityValidator().validate(doc)
-
-        # Step 5: Markdown generation
+        from pipeline.pipeline import Pipeline
+        doc = Pipeline().run(task, file_data)
         from output.markdown_generator import MarkdownGenerator
         task.cleaned_markdown = MarkdownGenerator().generate(doc)
-
         return task.cleaned_markdown
 
     # ─── GetTaskStatus ─────────────────────────────────────
