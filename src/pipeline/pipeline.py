@@ -104,9 +104,10 @@ class Pipeline:
         from preprocessing.pptx_preprocessor import PptxPreprocessor
         from preprocessing.md_preprocessor import MarkdownPreprocessor
         from preprocessing.txt_preprocessor import TxtPreprocessor
+        from preprocessing.ocr_preprocessor import OCRPreprocessor
 
         preps = [PDFPreprocessor(), DocxPreprocessor(), XlsxPreprocessor(),
-                 PptxPreprocessor(), MarkdownPreprocessor(), TxtPreprocessor()]
+                 PptxPreprocessor(), MarkdownPreprocessor(), TxtPreprocessor(), OCRPreprocessor()]
         mapping: dict[str, Any] = {}
         for p in preps:
             for ext in p.supported_extensions:

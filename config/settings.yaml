@@ -126,6 +126,10 @@ preprocessing:
   pptx:
     extract_notes: true
     extract_master_slide: false
+  ocr:
+    language: "chi_sim+eng"  # Tesseract language
+    dpi: 300                 # PDF→image rendering DPI
+    enabled: true
 
 # 公用元素处理配置
 elements:

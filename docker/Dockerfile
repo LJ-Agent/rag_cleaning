@@ -8,6 +8,7 @@ WORKDIR /app
 # Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc g++ libjpeg-dev zlib1g-dev libffi-dev \
+    tesseract-ocr tesseract-ocr-chi-sim poppler-utils \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy source files first, then install
