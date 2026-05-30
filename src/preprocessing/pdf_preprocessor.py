@@ -233,6 +233,9 @@ class PDFPreprocessor(BasePreprocessor):
         except ImportError:
             logger.warning("No OCR engine available (pytesseract + easyocr missing)")
             return ""
+        except Exception as e:
+            logger.warning(f"EasyOCR runtime error: {e}. Falling back to empty result.")
+            return ""
 
     def _get_or_create_page(self, doc: Document, page_num: int, img) -> Page:
         """Get existing page object or create a new one for this page number."""
