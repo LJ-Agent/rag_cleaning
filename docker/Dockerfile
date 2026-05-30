@@ -1,22 +1,28 @@
-FROM python:3.11-alpine
+FROM python:3.11-slim
 
-RUN addgroup -S rag && adduser -S rag -G rag
+LABEL maintainer="RAG Team"
+LABEL description="RAG Document Cleaning Service"
 
 WORKDIR /app
 
-# Install system dependencies for Pillow and grpcio
-RUN apk add --no-cache gcc musl-dev libffi-dev
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc g++ libjpeg-dev zlib1g-dev libffi-dev \
+    && rm -rf /var/lib/apt/lists/*
 
-# Copy all source files first, then install as editable package
+# Copy source files first, then install
 COPY pyproject.toml .
 COPY config/ config/
 COPY src/ src/
 COPY scripts/ scripts/
 COPY proto/ proto/
 
+# PyTorch CPU for Alpine compatibility
+RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
 RUN pip install --no-cache-dir -e . && pip install --no-cache-dir -e ".[dev]"
 
-RUN chown -R rag:rag /app
+# Non-root user
+RUN groupadd -r rag && useradd -r -g rag rag && chown -R rag:rag /app
 USER rag
 
 EXPOSE 50056
