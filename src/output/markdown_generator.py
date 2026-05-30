@@ -116,10 +116,12 @@ class MarkdownGenerator:
     def _image_to_markdown(self, elem: ImageElement) -> str:
         alt = elem.description or elem.alt_text or elem.caption or "image"
         url = elem.image_url or f"[image:{elem.element_id}]"
-
+        result = f"![{alt}]({url})"
         if elem.caption:
-            return f"![{alt}]({url})\n*{elem.caption}*"
-        return f"![{alt}]({url})"
+            result += f"\n*{elem.caption}*"
+        if elem.ocr_text:
+            result += f"\n> [OCR] {elem.ocr_text[:300]}"
+        return result
 
     def _formula_to_markdown(self, elem: FormulaElement) -> str:
         latex = elem.latex.strip()

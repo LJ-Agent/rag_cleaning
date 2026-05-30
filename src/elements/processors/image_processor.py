@@ -60,7 +60,11 @@ class ImageProcessor(BaseElementProcessor[ImageElement]):
                 return element
             self._seen_hashes.add(element.image_hash)
 
-        # Step 3: Generate VLM description
+        # Step 3: OCR text extraction (for images containing text)
+        if element.image_data and not element.ocr_text:
+            element = self._ocr_image(element)
+
+        # Step 4: Generate VLM description
         if self._generate_description and element.image_data and not element.description:
             element = self._describe_image(element, context)
 
@@ -141,6 +145,24 @@ class ImageProcessor(BaseElementProcessor[ImageElement]):
         except Exception as e:
             logger.warning(f"Image description failed for {img.element_id}: {e}")
 
+        return img
+
+    def _ocr_image(self, img: ImageElement) -> ImageElement:
+        """Run OCR on image to extract embedded text (Chinese + English)."""
+        try:
+            import pytesseract
+            from PIL import Image as PILImage
+            pil_img = PILImage.open(io.BytesIO(img.image_data))
+            if pil_img.mode != "L":
+                pil_img = pil_img.convert("L")
+            text = pytesseract.image_to_string(pil_img, lang="chi_sim+eng")
+            if text and text.strip():
+                img.ocr_text = text.strip()
+                logger.info(f"OCR extracted {len(img.ocr_text)} chars from {img.element_id}")
+        except ImportError:
+            logger.debug("pytesseract not available, skipping OCR")
+        except Exception as e:
+            logger.warning(f"OCR failed for {img.element_id}: {e}")
         return img
 
     def _build_description_prompt(self, context: dict[str, Any] | None = None) -> str:
