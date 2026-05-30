@@ -20,10 +20,11 @@ COPY proto/ proto/
 
 # PyTorch CPU for Alpine compatibility
 RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
+RUN pip install --no-cache-dir torchvision --index-url https://download.pytorch.org/whl/cpu
 RUN pip install --no-cache-dir -e . && pip install --no-cache-dir -e ".[dev]"
 
 # Non-root user
-RUN groupadd -r rag && useradd -r -g rag rag && chown -R rag:rag /app
+RUN groupadd -r rag && useradd -r -g rag -m rag && chown -R rag:rag /app /home/rag
 USER rag
 
 EXPOSE 50056
