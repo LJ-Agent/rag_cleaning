@@ -148,11 +148,9 @@ class ImageProcessor(BaseElementProcessor[ImageElement]):
         return img
 
     def _ocr_image(self, img: ImageElement) -> ImageElement:
-        """Run OCR on image — Tesseract first, EasyOCR fallback."""
+        """Run Tesseract OCR on image to extract embedded text."""
         if not img.image_data:
             return img
-
-        # Tesseract (fast)
         try:
             import pytesseract
             from PIL import Image as PILImage
@@ -161,22 +159,6 @@ class ImageProcessor(BaseElementProcessor[ImageElement]):
                 pil_img = pil_img.convert("L")
             text = pytesseract.image_to_string(pil_img, lang="chi_sim+eng")
             if text and text.strip():
-                img.ocr_text = text.strip()
-                return img
-        except Exception:
-            pass
-
-        # EasyOCR (fallback, pure Python)
-        try:
-            import easyocr
-            import numpy as np
-            from PIL import Image as PILImage
-            reader = easyocr.Reader(["ch_sim", "en"], gpu=False)
-            pil_img = PILImage.open(io.BytesIO(img.image_data))
-            arr = np.array(pil_img)
-            results = reader.readtext(arr)
-            text = "\n".join(r[1] for r in results)
-            if text.strip():
                 img.ocr_text = text.strip()
         except Exception as e:
             logger.debug(f"OCR skipped for {img.element_id}: {e}")
