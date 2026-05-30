@@ -113,7 +113,7 @@ preprocessing:
   pdf:
     extract_images: true
     extract_tables: true
-    ocr_enabled: false  # 扫描件OCR由OCR预处理器处理
+    ocr_enabled: true  # OCR fallback for scanned/image-only PDFs (no text layer detected)
     max_pages: 500
   docx:
     extract_images: true

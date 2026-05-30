@@ -261,6 +261,7 @@ class DocumentMetadata:
     has_images: bool = False
     has_tables: bool = False
     has_formulas: bool = False
+    has_ocr: bool = False
     is_encrypted: bool = False
     is_scanned: bool = False
     extra: dict[str, Any] = field(default_factory=dict)
