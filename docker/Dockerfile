@@ -7,13 +7,14 @@ WORKDIR /app
 # Install system dependencies for Pillow and grpcio
 RUN apk add --no-cache gcc musl-dev libffi-dev
 
+# Copy all source files first, then install as editable package
 COPY pyproject.toml .
-RUN pip install --no-cache-dir -e . && pip install --no-cache-dir -e ".[dev]"
-
 COPY config/ config/
 COPY src/ src/
 COPY scripts/ scripts/
 COPY proto/ proto/
+
+RUN pip install --no-cache-dir -e . && pip install --no-cache-dir -e ".[dev]"
 
 RUN chown -R rag:rag /app
 USER rag
