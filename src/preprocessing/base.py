@@ -46,3 +46,13 @@ class BasePreprocessor(ABC):
     def _make_element_id(doc_id: str, page_num: int, elem_index: int, prefix: str = "e") -> str:
         """Generate a unique element ID."""
         return f"{doc_id}_{prefix}_{page_num}_{elem_index}"
+
+    @staticmethod
+    def _decode_text(data: bytes) -> str:
+        """Decode bytes to string, trying multiple encodings to avoid mojibake."""
+        for encoding in ["utf-8", "gbk", "gb2312", "latin-1"]:
+            try:
+                return data.decode(encoding)
+            except (UnicodeDecodeError, LookupError):
+                continue
+        return data.decode("utf-8", errors="replace")

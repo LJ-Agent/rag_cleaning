@@ -37,17 +37,7 @@ class TxtPreprocessor(BasePreprocessor):
         )
         doc.log_stage("txt_preprocess_start")
 
-        # Try UTF-8 first, then common encodings
-        text = None
-        for encoding in ["utf-8", "gbk", "gb2312", "latin-1"]:
-            try:
-                text = file_data.decode(encoding)
-                break
-            except (UnicodeDecodeError, LookupError):
-                continue
-
-        if text is None:
-            raise PreprocessingException("Unable to decode text file with any supported encoding", format_type="txt")
+        text = self._decode_text(file_data)
 
         # Normalize line endings
         text = text.replace("\r\n", "\n").replace("\r", "\n")

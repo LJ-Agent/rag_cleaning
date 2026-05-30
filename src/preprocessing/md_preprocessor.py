@@ -48,7 +48,7 @@ class MarkdownPreprocessor(BasePreprocessor):
         doc.log_stage("md_preprocess_start")
 
         try:
-            text = file_data.decode("utf-8", errors="replace")
+            text = self._decode_text(file_data)
         except Exception as e:
             from common.exception.exceptions import PreprocessingException
             raise PreprocessingException(f"MD decode failed: {e}", format_type="md")
