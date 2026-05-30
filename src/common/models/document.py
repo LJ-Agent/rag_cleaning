@@ -26,6 +26,10 @@ class ElementRole(str, Enum):
     FOOTER = "footer"
     HEADER = "header"
     CAPTION = "caption"
+    CIRCUIT_DIAGRAM = "circuit_diagram"
+    CHEMICAL_EQUATION = "chemical_equation"
+    AUDIO = "audio"
+    VIDEO = "video"
     UNKNOWN = "unknown"
 
 
@@ -155,6 +159,72 @@ class CodeElement(BaseElement):
     line_numbers: bool = False
 
 
+@dataclass
+class CircuitDiagramElement(BaseElement):
+    """Circuit diagram / schematic element."""
+
+    image_data: bytes | None = None
+    image_url: str = ""
+    image_hash: str = ""
+    width: int = 0
+    height: int = 0
+    format: str = ""  # png / svg / etc.
+    description: str = ""  # AI-generated description
+    netlist: str = ""  # Extracted netlist
+    components: list[str] = field(default_factory=list)  # R1, C1, Q1, etc.
+    is_processed: bool = False
+    processing_metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class ChemicalEquationElement(BaseElement):
+    """Chemical equation / reaction diagram element."""
+
+    image_data: bytes | None = None
+    image_url: str = ""
+    image_hash: str = ""
+    smiles: str = ""  # SMILES representation
+    latex: str = ""  # LaTeX chemical equation
+    description: str = ""
+    raw_text: str = ""
+    confidence: float = 0.0
+    is_processed: bool = False
+    processing_metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class AudioElement(BaseElement):
+    """Audio element (embedded or linked audio content)."""
+
+    audio_data: bytes | None = None
+    audio_url: str = ""
+    audio_hash: str = ""
+    duration_seconds: float = 0.0
+    format: str = ""  # mp3 / wav / ogg
+    transcript: str = ""  # ASR transcription
+    language: str = ""  # ISO 639-1
+    is_processed: bool = False
+    processing_metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class VideoElement(BaseElement):
+    """Video element (embedded or linked video content)."""
+
+    video_data: bytes | None = None
+    video_url: str = ""
+    video_hash: str = ""
+    duration_seconds: float = 0.0
+    width: int = 0
+    height: int = 0
+    format: str = ""  # mp4 / webm
+    keyframes: list[bytes] = field(default_factory=list)
+    transcript: str = ""
+    description: str = ""
+    is_processed: bool = False
+    processing_metadata: dict[str, Any] = field(default_factory=dict)
+
+
 # ─── Page & Document Models ───────────────────────────────
 
 
@@ -242,10 +312,16 @@ class ElementStats:
     quotes: int = 0
     hyperlinks: int = 0
 
+    circuit_diagrams: int = 0
+    chemical_equations: int = 0
+    audios: int = 0
+    videos: int = 0
+
     def total(self) -> int:
         return sum([
             self.text_blocks, self.headings, self.tables, self.images,
             self.formulas, self.code_blocks, self.lists, self.quotes, self.hyperlinks,
+            self.circuit_diagrams, self.chemical_equations, self.audios, self.videos,
         ])
 
     def to_dict(self) -> dict[str, int]:
@@ -259,6 +335,10 @@ class ElementStats:
             "lists": self.lists,
             "quotes": self.quotes,
             "hyperlinks": self.hyperlinks,
+            "circuit_diagrams": self.circuit_diagrams,
+            "chemical_equations": self.chemical_equations,
+            "audios": self.audios,
+            "videos": self.videos,
         }
 
 
@@ -306,6 +386,18 @@ class Document:
     def get_formulas(self) -> list[FormulaElement]:
         return [e for e in self.all_elements if isinstance(e, FormulaElement)]
 
+    def get_circuit_diagrams(self) -> list[CircuitDiagramElement]:
+        return [e for e in self.all_elements if isinstance(e, CircuitDiagramElement)]
+
+    def get_chemical_equations(self) -> list[ChemicalEquationElement]:
+        return [e for e in self.all_elements if isinstance(e, ChemicalEquationElement)]
+
+    def get_audio(self) -> list[AudioElement]:
+        return [e for e in self.all_elements if isinstance(e, AudioElement)]
+
+    def get_videos(self) -> list[VideoElement]:
+        return [e for e in self.all_elements if isinstance(e, VideoElement)]
+
     def get_element_count(self) -> ElementStats:
         stats = ElementStats()
         for e in self.all_elements:
@@ -328,6 +420,14 @@ class Document:
                 stats.formulas += 1
             elif isinstance(e, CodeElement):
                 stats.code_blocks += 1
+            elif isinstance(e, CircuitDiagramElement):
+                stats.circuit_diagrams += 1
+            elif isinstance(e, ChemicalEquationElement):
+                stats.chemical_equations += 1
+            elif isinstance(e, AudioElement):
+                stats.audios += 1
+            elif isinstance(e, VideoElement):
+                stats.videos += 1
         return stats
 
     def log_stage(self, stage: str):
