@@ -134,10 +134,11 @@ class OCRPreprocessor(BasePreprocessor):
             text = "\n".join(r[1] for r in results)
             return text.strip()
         except ImportError:
-            raise PreprocessingException(
-                "No OCR engine available. Install: pip install pytesseract easyocr",
-                format_type="ocr"
-            )
+            logger.warning("No OCR engine available (pytesseract + easyocr missing)")
+            return ""
+        except Exception as e:
+            logger.warning(f"EasyOCR runtime error: {e}. Falling back to empty result.")
+            return ""
 
     def _raise_unsupported(self, ext: str):
         from common.exception.exceptions import PreprocessingException

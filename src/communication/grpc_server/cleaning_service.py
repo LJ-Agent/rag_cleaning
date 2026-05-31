@@ -9,6 +9,7 @@ from google.protobuf.json_format import MessageToDict
 from common.config_loader import get_config
 from common.models.document import CleaningTask
 from common.util.logger import bind_trace_id, get_logger
+from communication.grpc_server.generated import cleaning_pb2
 from infrastructure.minio.minio_client import get_minio_client
 from infrastructure.redis.redis_client import get_redis_client
 from scheduling.state_machine import get_state_machine_factory
@@ -33,6 +34,16 @@ class CleaningServiceServicer:
         self._start_time = time.time()
 
     # ─── Clean (synchronous, for small files) ──────────────
+
+    def CleanStream(self, request_iterator, context):
+        """Handle streaming cleaning request (not implemented — use Clean for sync)."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details("CleanStream is not implemented. Use the synchronous Clean RPC.")
+        return cleaning_pb2.CleaningResponse(
+            task_id="stream",
+            status=cleaning_pb2.CleaningStatus.FAILED,
+            error_message="CleanStream not implemented",
+        )
 
     def Clean(self, request, context):
         """Handle synchronous cleaning request."""
@@ -68,50 +79,55 @@ class CleaningServiceServicer:
         # Full implementation would send to Kafka and poll for result
         try:
             from output.metadata_generator import MetadataGenerator
-            result = self._run_inline_pipeline(task, file_data)
+            md_text, doc = self._run_inline_pipeline(task, file_data)
             meta_gen = MetadataGenerator()
-            metadata = meta_gen.generate(result)
+            metadata = meta_gen.generate(doc)
 
             # Store results to MinIO
             tenant_id = task.tenant_id or "default"
             doc_id = task.document_id
-            md_path = self._minio.put_cleaned_markdown(doc_id, tenant_id, result)
+            md_path = self._minio.put_cleaned_markdown(doc_id, tenant_id, md_text)
             meta_path = self._minio.put_metadata_json(doc_id, tenant_id, metadata)
 
-            # Build response
-            response = {
-                "task_id": task_id,
-                "status": "SUCCESS",
-                "markdown_url": md_path,
-                "metadata_url": meta_path,
-                "quality": {
-                    "overall_score": result.quality.overall_score if result.quality else 1.0,
-                    "completeness": result.quality.completeness if result.quality else 1.0,
-                    "purity": result.quality.purity if result.quality else 1.0,
-                    "structure": result.quality.structure if result.quality else 1.0,
-                    "coherence": result.quality.coherence if result.quality else 1.0,
-                },
-                "doc_meta": {
-                    "title": result.metadata.title,
-                    "author": result.metadata.author,
-                    "page_count": result.page_count,
-                    "word_count": result.metadata.word_count,
-                    "language": result.metadata.language,
-                },
-            }
-            return type("CleaningResponse", (), response)()
+            # Build response using protobuf message
+            quality = cleaning_pb2.QualityReport(
+                overall_score=doc.quality.overall_score if doc.quality else 1.0,
+                completeness=doc.quality.completeness if doc.quality else 1.0,
+                purity=doc.quality.purity if doc.quality else 1.0,
+                structure=doc.quality.structure if doc.quality else 1.0,
+                coherence=doc.quality.coherence if doc.quality else 1.0,
+            )
+            doc_meta = cleaning_pb2.DocumentMetadata(
+                title=doc.metadata.title,
+                author=doc.metadata.author,
+                page_count=doc.page_count,
+                word_count=doc.metadata.word_count,
+                language=doc.metadata.language,
+            )
+            return cleaning_pb2.CleaningResponse(
+                task_id=task_id,
+                status=cleaning_pb2.CleaningStatus.SUCCESS,
+                markdown_url=md_path,
+                metadata_url=meta_path,
+                quality=quality,
+                doc_meta=doc_meta,
+            )
 
         except Exception as e:
             logger.error(f"Cleaning failed for {task_id}: {e}")
             return self._build_error_response(task_id, str(e))
 
     def _run_inline_pipeline(self, task: CleaningTask, file_data: bytes):
-        """Run the full cleaning pipeline in-process (for gRPC sync path)."""
+        """Run the full cleaning pipeline in-process (for gRPC sync path).
+
+        Returns:
+            Tuple of (markdown_text: str, doc: Document)
+        """
         from pipeline.pipeline import Pipeline
         doc = Pipeline().run(task, file_data)
         from output.markdown_generator import MarkdownGenerator
-        task.cleaned_markdown = MarkdownGenerator().generate(doc)
-        return task.cleaned_markdown
+        md_text = MarkdownGenerator().generate(doc)
+        return md_text, doc
 
     # ─── GetTaskStatus ─────────────────────────────────────
 
@@ -120,7 +136,8 @@ class CleaningServiceServicer:
         if not sm:
             context.set_code(grpc.StatusCode.NOT_FOUND)
             context.set_details(f"Task not found: {request.task_id}")
-            return type("TaskStatusResponse", (), {"task_id": request.task_id, "status": "NOT_FOUND"})()
+            return cleaning_pb2.TaskStatusResponse(task_id=request.task_id, status="NOT_FOUND")
+        return cleaning_pb2.TaskStatusResponse(task_id=request.task_id, status=sm.current_state or "UNKNOWN")
 
         return type("TaskStatusResponse", (), sm.to_dict())()
 
@@ -133,17 +150,17 @@ class CleaningServiceServicer:
             "kafka": True,  # Would check actual connectivity
             "llm": True,
         }
-        return type("HealthCheckResponse", (), {
-            "healthy": all(components.values()),
-            "version": "1.0.0",
-            "components": components,
-        })()
+        return cleaning_pb2.HealthCheckResponse(
+            healthy=all(components.values()),
+            version="1.0.0",
+            components=components,
+        )
 
     def _build_error_response(self, task_id: str, error: str):
-        return type("CleaningResponse", (), {
-            "task_id": task_id,
-            "status": "FAILED",
-            "markdown_url": "",
-            "metadata_url": "",
-            "error_message": error,
-        })()
+        return cleaning_pb2.CleaningResponse(
+            task_id=task_id,
+            status=cleaning_pb2.CleaningStatus.FAILED,
+            markdown_url="",
+            metadata_url="",
+            error_message=error,
+        )
